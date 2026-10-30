@@ -63,3 +63,38 @@ def test_isi_uses_array_keys_and_preserves_order():
     np.testing.assert_allclose(engine.isi(arrays),[.01,0.,.02])
     for n in (0,1):
         assert engine.isi({k:v[:n] for k,v in arrays.items()}).size == 0
+
+@pytest.mark.parametrize('backend',['cpu','cuda'])
+def test_same_ts_linear_matches_original(backend):
+    from dataclasses import replace
+    from event_metrics.events import EventStream
+    from event_metrics.metrics import same_ts
+    from event_metrics.accelerated import same_ts_sorted
+    xp=np
+    if backend=='cuda':
+        xp=pytest.importorskip('cupy')
+        if xp.cuda.runtime.getDeviceCount()<1: pytest.skip('CUDA unavailable')
+    rng=np.random.default_rng(42)
+    examples=[[],[.01],[.01,.01],[.01,.01,.01,.02,.03,.03],
+              [.0499,.05,.0501],rng.integers(0,1000,10000)*.0001]
+    for resolution in (1e-9,.001,.1):
+        cfg=replace(MetricConfig(),same_ts_resolution=resolution)
+        for times in examples:
+            times=np.asarray(times,dtype=float)
+            n=len(times)
+            e=EventStream(times,np.zeros(n),np.zeros(n),np.ones(n),2,2,0.,.1)
+            want=same_ts(e,cfg)
+            got=same_ts_sorted(xp.asarray(e.t),e.start,cfg,xp)
+            np.testing.assert_allclose(got['value'],want['value'],equal_nan=True,rtol=0,atol=1e-15)
+            assert got['status']==want['status']
+
+def test_same_ts_large_without_sort_or_unique():
+    from event_metrics.accelerated import same_ts_sorted
+    class LinearOnly:
+        int64=np.int64
+        rint=staticmethod(np.rint)
+        floor=staticmethod(np.floor)
+        zeros=staticmethod(np.zeros)
+    # 1 million events: each tick repeats twice; require only linear primitives.
+    t=np.repeat(np.arange(500000,dtype=float)*1e-6,2)
+    assert same_ts_sorted(t,0.,MetricConfig(),LinearOnly())['value']==1.
