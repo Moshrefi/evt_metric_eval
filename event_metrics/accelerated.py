@@ -3,6 +3,28 @@ import time
 import numpy as np
 from . import metrics as m
 
+
+def same_ts_sorted(t, start, cfg, xp=np):
+    """Exact Same-ts on EventStream's time-sorted timestamps, O(N).
+
+    Both window IDs and rounded timestamp ticks are nondecreasing. Equal
+    (window, tick) keys are therefore contiguous. An event belongs to a
+    repeated key iff either neighbor has that key. No row-wise unique,
+    inverse-index allocation, packed keys, or precision reduction is needed.
+    """
+    if not len(t):
+        return m.result(np.nan, reason='Empty stream')
+    q=(t-start)/cfg.same_ts_resolution
+    if float(q.max())>=np.iinfo(np.int64).max:
+        raise ValueError('Timestamp quantization exceeds int64')
+    ticks=xp.rint(q).astype(xp.int64)
+    windows=xp.floor((t-start)/cfg.window).astype(xp.int64)
+    adjacent=(ticks[1:]==ticks[:-1]) & (windows[1:]==windows[:-1])
+    repeated=xp.zeros(len(t),dtype=bool)
+    repeated[:-1] |= adjacent
+    repeated[1:] |= adjacent
+    return m.result(float(repeated.mean()))
+
 class Evaluator:
     def __init__(self, reference, cfg, edges, backend='cuda', workers=1):
         if backend not in ('cpu', 'cuda'):
@@ -87,6 +109,7 @@ class Evaluator:
             start=time.perf_counter(); value=fn()
             if self.backend=='cuda': xp.cuda.get_current_stream().synchronize()
             timings[name]=time.perf_counter()-start
+            if progress: progress(f'  {name} done in {timings[name]:.3f}s')
             return value
         def ig():
             if not len(self.ri) or len(si)<2:
@@ -100,13 +123,7 @@ class Evaluator:
             return m.result(value,mu_s=mu,lambda_s=lam,reference_clamped=int((self.ri<cfg.isi_min).sum()),
                 modified_clamped=int((si<cfg.isi_min).sum()),time_unit='seconds')
         def same():
-            if not len(e): return m.result(np.nan,reason='Empty stream')
-            q=(a['t']-e.start)/cfg.same_ts_resolution
-            if float(q.max())>=np.iinfo(np.int64).max: raise ValueError('Timestamp quantization exceeds int64')
-            w=xp.floor((a['t']-e.start)/cfg.window).astype(xp.int64)
-            keys=xp.column_stack((w,xp.rint(q).astype(xp.int64)))
-            _,inv,counts=xp.unique(keys,axis=0,return_inverse=True,return_counts=True)
-            return m.result(float(xp.mean(counts[inv]>1)))
+            return same_ts_sorted(a['t'],e.start,cfg,xp)
         def fano():
             fr,mr=self.rf; fs,ms=m.fano_values(e,cfg)
             shared=(mr>0)&(ms>0); union=(mr>0)|(ms>0)
