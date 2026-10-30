@@ -73,3 +73,7 @@ python scripts/execute_notebook.py --output runs/notebook_validation.ipynb
 The second command explicitly executes a synthetic validation copy. It never
 changes the real-data defaults in the main notebook. No data or checkpoints
 are downloaded by the notebook.
+
+## Saved experiments and optional GPU
+
+Use [event_stream_metric_benchmark_cached_gpu.ipynb](event_stream_metric_benchmark_cached_gpu.ipynb) for persistent NPZ samples, a CSV experiment index, cached reference features, per-sample resume, and hybrid CuPy CUDA evaluation. See [setup and scope](docs/cached_gpu.md). The original notebook remains available. GPU correctness must pass the notebook's startup parity check on your target machine; no GPU speedup is claimed without measurement.
