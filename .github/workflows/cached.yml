@@ -1,0 +1,25 @@
+name: Cached notebook validation
+on: [push, workflow_dispatch]
+permissions:
+  contents: read
+concurrency:
+  group: cached-validation
+  cancel-in-progress: true
+jobs:
+  cached:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e '.[notebook,test]'
+      - run: python -m pytest -q
+      - run: python scripts/validate_cached_notebook.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cached-synthetic-validation
+          path: |
+            runs/
+            experiment_samples/
