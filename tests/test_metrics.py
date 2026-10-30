@@ -5,7 +5,7 @@ from scipy.spatial.distance import cdist
 from event_metrics.events import EventStream, synthetic_stream
 from event_metrics.metrics import (MetricConfig,evaluate,ig_fit,ig_logpdf,voxel_counts,per_pixel_isi,
                                    same_ts,isi_spike,fano_values,chamfer)
-from event_metrics.counterexamples import audit_cases,boundary_case,base
+from event_metrics.counterexamples import audit_cases,boundary_case,base,small_change_diagnostics
 from event_metrics.perturbations import perturb,default_sweep,guard_reference
 
 
@@ -92,6 +92,16 @@ def test_voxel_boundary_discontinuity():
     crossing,interior=boundary_case()
     assert evaluate(*crossing)['Voxel MAE']['value']>0
     assert evaluate(*interior)['Voxel MAE']['value']==0
+
+
+def test_small_change_diagnostics_cover_every_metric():
+    from event_metrics.metrics import NAMES
+    rows=small_change_diagnostics()
+    assert {r['metric'] for r in rows}==set(NAMES)
+    isi=next(r for r in rows if r['metric']=='ISI-spike')
+    assert isi['reference_score']==1 and isi['modified_score']==0
+    same=next(r for r in rows if r['metric']=='Same-ts')
+    assert same['reference_score']==1 and same['modified_score']==0
 
 
 @pytest.mark.parametrize('kind',list(default_sweep()))

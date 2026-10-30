@@ -42,7 +42,7 @@ from event_metrics.metrics import MetricConfig, NAMES, evaluate
 from event_metrics.perturbations import guard_reference, perturb, default_sweep
 from event_metrics.benchmark import run_benchmark, write_json
 from event_metrics.analysis import correlation_by_family
-from event_metrics.counterexamples import cases, audit_cases, boundary_case
+from event_metrics.counterexamples import cases, audit_cases, boundary_case, small_change_diagnostics
 from event_metrics.visualization import (compare_streams, distributions, response_plot, heatmap, case_gallery)
 pd.set_option('display.max_colwidth', 100)
 ''')
@@ -252,6 +252,9 @@ for label,pair in [('Crosses bin edge',crossing),('Within bin',interior)]:
     boundary_rows.append({'case':label,**{m:scores[m]['value'] for m in NAMES[-3:]}})
 display(pd.DataFrame(boundary_rows))
 pd.DataFrame(boundary_rows).to_csv(run_dir/'boundary_sensitivity.csv',index=False)
+small_changes = pd.DataFrame(small_change_diagnostics())
+display(small_changes)
+small_changes.to_csv(run_dir/'small_change_diagnostics.csv',index=False)
 ''')
 md('''## 10. Optional combinations and parameter ablations
 

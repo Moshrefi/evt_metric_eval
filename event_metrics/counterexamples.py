@@ -72,3 +72,35 @@ def boundary_case():
     e = EventStream([.019999],[3],[3],[1],16,16,0.,.1)
     interior = e.replace(t=np.array([.015]))
     return (e,e.replace(t=e.t+2e-6)), (interior,interior.replace(t=interior.t+2e-6))
+
+
+def small_change_diagnostics():
+    """Measured sensitivity probes, not automatically classified as metric failures."""
+    cfg=MetricConfig()
+    probes=[]
+    for n in (1,100):
+        e=EventStream(np.linspace(.01,.04,n),np.zeros(n),np.zeros(n),np.ones(n),16,16,0.,.1)
+        probes.append(('Count Ratio',f'Delete one event from N={n}',e,e.select(np.arange(n-1)),cfg))
+    e=EventStream([.01,.01],[2,3],[3,3],[1,1],16,16,0.,.1)
+    probes.append(('Same-ts','Break one timestamp tie by 2 ns',e,e.replace(t=np.array([.01,.010000002])),cfg))
+    e=EventStream([.01,.010009999],[3,3],[3,3],[1,1],16,16,0.,.1)
+    probes.append(('ISI-spike','Move ISI across 10 us threshold by 2 ns',e,e.replace(t=np.array([.01,.010010001])),cfg))
+    e=EventStream([.049999],[3],[3],[1],16,16,0.,.1)
+    probes.append(('Chamfer','Cross matching-window edge by 2 us',e,e.replace(t=e.t+2e-6),cfg))
+    e=EventStream([.0005,.001999],[3,3],[3,3],[1,1],16,16,0.,.004)
+    probes.append(('Fano','Cross sub-bin edge by 2 us',e,e.replace(t=np.array([.0005,.002001])),
+                   MetricConfig(window=.004,fano_bin_t=.002)))
+    e=base()
+    times=e.t.copy(); times[2]+=1e-6
+    probes.append(('IG-NLL','Perturb one timestamp by 1 us; fixed seconds and ISI clamp',e,e.replace(t=times),cfg))
+    crossing,interior=boundary_case()
+    for metric in ('Voxel MAE','Voxel RMSE','Voxel Relative L1'):
+        for label,pair in [('Across bin edge',crossing),('Within bin',interior)]:
+            probes.append((metric,label+'; 2 us shift',*pair,cfg))
+    rows=[]
+    for metric,label,r,m,config in probes:
+        a=evaluate(r,r,config)[metric]; b=evaluate(r,m,config)[metric]
+        rows.append(dict(metric=metric,probe=label,reference_score=a['value'],modified_score=b['value'],
+                         score_change=b['value']-a['value'],status=b['status'],reason=b['reason'],
+                         window_s=config.window,fano_bin_s=config.fano_bin_t))
+    return rows

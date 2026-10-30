@@ -11,7 +11,7 @@ parser.add_argument('--output',default='runs/notebook_validation.ipynb')
 args=parser.parse_args()
 os.environ['EVT_METRIC_MODE']='synthetic_demo'
 os.environ['EVT_METRIC_QUICK']='1'
-os.environ['MPLBACKEND']='Agg'
+os.environ['MPLBACKEND']='module://matplotlib_inline.backend_inline'
 nb=nbformat.read(ROOT/'event_stream_metric_benchmark.ipynb',as_version=4)
 nbformat.validate(nb)
 NotebookClient(nb,timeout=600,kernel_name='python3',resources={'metadata':{'path':str(ROOT)}}).execute()

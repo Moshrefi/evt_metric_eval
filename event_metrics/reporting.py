@@ -15,6 +15,24 @@ def write_report(run_dir,reference,table,summary,failures):
            '|---|---|---:|---:|---|---|---|']
     for row in failures.itertuples():
         lines.append(f'| {row.metric} | {row.case} | {row.reference_score:.8g} | {row.modified_score:.8g} | {row.status} | {row.demonstrated} | {row.explanation} |')
+    dimensions={
+      'IG-NLL':('Pooled per-pixel ISI likelihood','Absolute time, pixel identity, polarity','Marked spatiotemporal matching'),
+      'Chamfer':('Nearest-neighbor space-time proximity within polarity','Exact multiplicity; unmatched groups in source definition','Mass-sensitive matching with explicit unmatched-event handling'),
+      'Same-ts':('Internal timestamp multiplicity','Locations and polarity; cross-stream time agreement','Absolute-time marked event comparison'),
+      'Fano':('Coarse temporal count variability per spatial cell','Polarity, within-cell positions, nonshared active cells','Fine spatial/polarity matching with coverage accounting'),
+      'ISI-spike':('Fraction of short per-pixel intervals','Absolute time, pixel identity, most ISI distribution detail','Full interval distribution plus spatial/polarity comparison'),
+      'Count Ratio':('Total number of events','All spatial, temporal and polarity structure','Marked spatiotemporal distance'),
+      'Voxel MAE':('Mean absolute signed-count error','Within-bin timing and cancelling ON/OFF pairs','Separate polarity channels or event-level matching'),
+      'Voxel RMSE':('Signed-count error emphasizing concentrated deviations','Within-bin timing and cancelling ON/OFF pairs','Separate polarity channels or event-level matching'),
+      'Voxel Relative L1':('Absolute signed-count error relative to reference mass','Within-bin timing and cancellation; unstable zero mass','Mass-preserving marked comparison')}
+    lines += ['', '## Comparative interpretation', '',
+              '| Metric | Captures | Misses | Demonstrated condition | Why | Possible complement (not implemented) |',
+              '|---|---|---|---|---|---|']
+    for metric,(captures,misses,complement) in dimensions.items():
+        rows=failures[(failures.metric==metric)&failures.demonstrated]
+        conditions='; '.join(rows['case']) or 'Not demonstrated in this run'
+        why='; '.join(rows['explanation']) or 'Pending numerical evidence'
+        lines.append(f'| {metric} | {captures} | {misses} | {conditions} | {why} | {complement} |')
     lines += ['', '## Selected-stream responses', '',
               'Numbers below describe the configured severity order, not overall perceptual quality or equivalence between corruption types.', '',
               '| Family | Metric | Mean Spearman | Mean strict order fraction | Valid levels / attempted |',
