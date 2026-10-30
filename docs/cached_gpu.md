@@ -53,3 +53,5 @@ Saving all samples trades storage and disk IO for avoiding repeated generation; 
 Uncompressed storage may require tens of GB for a full sweep on million-event clips.
 CPU_WORKERS controls only Chamfer queries; respect your scheduler CPU allocation.
 Array operations may still peak in memory during sorts; CUDA out-of-memory is surfaced, never silently approximated.
+
+To reopen an experiment without the original dataset, set REUSE_SAMPLE_DIR = Path('experiment_samples/<folder id>') in the settings cell. Its saved samples.csv determines the sweep and seeds. The notebook loads reference.npz and skips source discovery and generation. Keep the intended voxel configuration when reproducing scores; a changed configuration starts a new evaluation folder.
