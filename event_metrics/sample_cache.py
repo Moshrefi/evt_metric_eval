@@ -79,7 +79,12 @@ def evaluate_samples(folder,cfg,edges,backend='cuda',workers=1,progress=print):
               evaluator_sha256=source_hash('accelerated.py'),metrics_sha256=source_hash('metrics.py'),
               cache_sha256=source_hash('sample_cache.py'),sample_ids=sorted(index.sample_id.unique().tolist()))
     run_dir=folder/'evaluations'/key(plan)[:24]; run_dir.mkdir(parents=True,exist_ok=True)
-    atomic_json(run_dir/'settings.json',plan)
+    settings_path=run_dir/'settings.json'
+    if settings_path.exists():
+        if json.loads(settings_path.read_text()) != plan:
+            raise ValueError('Evaluation settings mismatch')
+    else:
+        atomic_json(settings_path,plan)
     engine=Evaluator(reference,cfg,edges,backend,workers)
     bp=run_dir/'baseline.json'
     if bp.exists(): baseline=json.loads(bp.read_text())
