@@ -42,3 +42,24 @@ def test_cache_resume(tmp_path):
     assert stamps=={p.name:p.stat().st_mtime_ns for p in run2.glob('*.json')}
     with pytest.raises(ValueError):
         load_sample(folder/row.file,'wrong-checksum')
+
+def test_isi_uses_array_keys_and_preserves_order():
+    # Enforce the CuPy keys contract even on CPU-only CI.
+    class StrictKeys:
+        float64 = np.float64
+        stack = staticmethod(np.stack)
+        diff = staticmethod(np.diff)
+        empty = staticmethod(np.empty)
+        @staticmethod
+        def lexsort(keys):
+            assert isinstance(keys, np.ndarray) and keys.ndim == 2
+            return np.lexsort(keys)
+    from types import SimpleNamespace
+    engine=object.__new__(Evaluator)
+    engine.xp=StrictKeys()
+    engine.reference=SimpleNamespace(width=10)
+    arrays={'t':np.array([.03,.02,.01,.02,.01]),
+            'x':np.array([1,0,1,0,0]),'y':np.zeros(5,dtype=int)}
+    np.testing.assert_allclose(engine.isi(arrays),[.01,0.,.02])
+    for n in (0,1):
+        assert engine.isi({k:v[:n] for k,v in arrays.items()}).size == 0
