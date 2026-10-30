@@ -36,7 +36,11 @@ class Evaluator:
     def isi(self,a):
         xp=self.xp
         pix=a['y']*self.reference.width+a['x']
-        order=xp.lexsort((a['t'],pix))
+        if len(pix) < 2:
+            return xp.empty(0, dtype=xp.float64)
+        # CuPy requires a 2-D keys array; last row is the primary key.
+        # Float64 retains timestamps and exact pixel IDs for sensor-sized domains.
+        order=xp.lexsort(xp.stack((a['t'],pix), axis=0))
         return xp.diff(a['t'][order])[xp.diff(pix[order])==0]
 
     def voxels(self,a):
